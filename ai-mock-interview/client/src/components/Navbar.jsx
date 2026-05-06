@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  LogOut, LayoutDashboard, BarChart3, Bot, Menu, X, 
-  Map, BookOpen, Code2, MessagesSquare, FileText, Users, Gift, RefreshCw, Award, Trophy, History as HistoryIcon 
+  LogOut, LayoutDashboard, Menu, X, 
+  Bot, ChevronRight, Bell, User, 
+  Layers, BarChart3, History as HistoryIcon, CreditCard
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 
@@ -10,192 +11,193 @@ function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const token = localStorage.getItem("token");
-  
+  const [isScrolled, setIsScrolled] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/");
   };
 
-  const closeDrawer = () => setIsDrawerOpen(false);
+  const landingLinks = [
+    { label: "Features", href: "/#features" },
+    { label: "Mock Interviews", href: "/#interviews" },
+    { label: "Testimonials", href: "/#testimonials" },
+    { label: "Pricing", href: "/#pricing" },
+  ];
 
-  // Drawer Nav Item Component
-  const DrawerLink = ({ to, icon: Icon, label }) => {
-     const isActive = location.pathname === to;
-     return (
-        <Link 
-           to={to} 
-           onClick={closeDrawer}
-           className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all ${
-              isActive 
-                ? 'bg-yellow-400/10 text-yellow-400 border border-yellow-400/30 font-bold' 
-                : 'text-gray-300 hover:bg-white/5 hover:text-black font-bold font-medium'
-           }`}
-        >
-           <Icon className="w-5 h-5" />
-           <span>{label}</span>
-        </Link>
-     )
-  }
+  const authenticatedLinks = [
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Explore Tools", href: "/dashboard#tools", icon: Layers },
+    { label: "Performance", href: "/performance", icon: BarChart3 },
+    { label: "History", href: "/history", icon: HistoryIcon },
+    { label: "Pricing", href: "/#pricing", icon: CreditCard },
+  ];
 
-  if (!token) {
-    return (
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-black border border-yellow-400 flex items-center justify-center text-yellow-400 shadow-[0_0_15px_rgba(255,204,0,0.3)] group-hover:scale-105 transition-transform duration-300">
-              <Bot className="w-6 h-6" />
-            </div>
-            <span className="font-bold text-xl tracking-tight text-white">NextRound <span className="text-yellow-400">AI</span></span>
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link to="/login" className="text-sm font-semibold text-gray-300 hover:text-white transition-colors">Sign In</Link>
-            <Link to="/login" className="text-sm font-bold bg-yellow-400 hover:bg-yellow-300 text-black px-6 py-2.5 rounded-full transition-all hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(255,204,0,0.3)]">Get Started</Link>
-          </div>
-        </div>
-      </nav>
-    );
-  }
+  const currentLinks = token ? authenticatedLinks : landingLinks;
 
   return (
-    <>
-      <nav className="fixed top-0 left-0 right-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/10 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsDrawerOpen(true)}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all xl:hidden"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-
-            <Link to="/dashboard" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-black border border-yellow-400 flex items-center justify-center text-yellow-400 shadow-[0_0_15px_rgba(255,204,0,0.4)] group-hover:scale-105 transition-transform duration-300">
-                <Bot className="w-6 h-6" />
-              </div>
-              <span className="font-bold text-xl tracking-tight text-white hidden sm:block">NextRound <span className="text-yellow-400">AI</span></span>
-            </Link>
+    <nav 
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isScrolled || token ? "py-3 bg-black/60 backdrop-blur-md border-b border-white/5" : "py-5 bg-transparent"
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+        <Link to={token ? "/dashboard" : "/"} className="flex items-center gap-2 group">
+          <div className="w-8 h-8 rounded-lg bg-yellow-400 flex items-center justify-center text-black transition-transform group-hover:scale-105">
+            <Bot className="w-5 h-5" />
           </div>
+          <span className="font-bold text-lg tracking-tight text-white">NextRound <span className="text-yellow-400">AI</span></span>
+        </Link>
 
-          <div className="hidden xl:flex flex-1 justify-center gap-2">
-            <Link 
-              to="/dashboard" 
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
-                location.pathname === '/dashboard' 
-                  ? 'bg-yellow-400/10 text-yellow-400 border border-yellow-400/20' 
-                  : 'text-gray-300 hover:bg-white/5 hover:text-black font-bold'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4" /> Dashboard
-            </Link>
-
-            <Link 
-              to="/performance" 
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
-                location.pathname === '/performance' 
-                  ? 'bg-yellow-400/10 text-yellow-400 border border-yellow-400/20' 
-                  : 'text-gray-300 hover:bg-white/5 hover:text-black font-bold'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" /> Performance
-            </Link>
-
-            <button 
-              onClick={() => setIsDrawerOpen(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-gray-300 hover:bg-white/5 hover:text-white transition-all"
-            >
-              <Menu className="w-4 h-4" /> Explore Tools
-            </button>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleLogout}
-              className="flex items-center gap-2 text-sm font-semibold text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 px-5 py-2.5 rounded-full transition-colors border border-white/10"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:block">Logout</span>
-            </motion.button>
-          </div>
+        {/* Desktop Nav */}
+        <div className="hidden md:flex items-center gap-1">
+          {currentLinks.map((link) => {
+            const isActive = location.pathname === link.href || (location.pathname + location.hash) === link.href;
+            return (
+              <Link 
+                key={link.label}
+                to={link.href}
+                className={`px-4 py-2 text-sm font-medium transition-all rounded-lg relative ${
+                  isActive ? "text-white" : "text-white/50 hover:text-white"
+                }`}
+              >
+                {link.label}
+                {isActive && (
+                  <motion.div 
+                    layoutId="nav-active"
+                    className="absolute bottom-0 left-2 right-2 h-0.5 bg-yellow-400 rounded-full"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+              </Link>
+            );
+          })}
         </div>
-      </nav>
 
-      {/* Slide-out Drawer Component */}
-      <AnimatePresence>
-         {isDrawerOpen && (
+        <div className="flex items-center gap-4">
+          {!token ? (
             <>
-               {/* Backdrop */}
-               <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={closeDrawer}
-                  className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
-               />
-
-               {/* Drawer Panel */}
-               <motion.div 
-                  initial={{ x: "-100%" }}
-                  animate={{ x: 0 }}
-                  exit={{ x: "-100%" }}
-                  transition={{ type: "spring", stiffness: 200, damping: 25 }}
-                  className="fixed top-0 left-0 bottom-0 w-80 bg-[#000000] border-r border-white/10 shadow-2xl z-50 flex flex-col overflow-y-auto"
-               >
-                  <div className="p-6 border-b border-white/10 flex items-center justify-between sticky top-0 bg-black/90 backdrop-blur-md z-10">
-                     <span className="font-bold text-lg text-white flex items-center gap-2">
-                        <Bot className="w-5 h-5 text-yellow-400" /> Platform Tools
-                     </span>
-                     <button onClick={closeDrawer} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors">
-                        <X className="w-4 h-4" />
-                     </button>
-                  </div>
-
-                  <div className="p-4 space-y-6 flex-1">
-                     
-                     {/* Learn Section */}
-                     <div>
-                        <h4 className="text-[10px] uppercase font-bold text-gray-300 tracking-widest pl-4 mb-3">Learn</h4>
-                        <div className="space-y-1">
-                           <DrawerLink to="/learn/path" icon={Map} label="Learning Path" />
-                           <DrawerLink to="/learn/dsa" icon={BookOpen} label="DSA Pattern Mastery" />
-                        </div>
-                     </div>
-
-                     {/* Practice Section */}
-                     <div>
-                        <h4 className="text-[10px] uppercase font-bold text-gray-300 tracking-widest pl-4 mb-3">Practice</h4>
-                        <div className="space-y-1">
-                           <DrawerLink to="/practice/code" icon={Code2} label="Code/Design Practice" />
-                           <DrawerLink to="/practice/coach" icon={MessagesSquare} label="AI Coach" />
-                        </div>
-                     </div>
-
-                     {/* Tools Section */}
-                     <div>
-                        <h4 className="text-[10px] uppercase font-bold text-gray-300 tracking-widest pl-4 mb-3">Auxiliary Engines</h4>
-                        <div className="space-y-1">
-                           <DrawerLink to="/leaderboard" icon={Trophy} label="Global Leaderboard" />
-                           <DrawerLink to="/analytics" icon={BarChart3} label="Global Analytics" />
-                           <DrawerLink to="/history" icon={HistoryIcon} label="Session History" />
-                           <DrawerLink to="/certificates" icon={Award} label="Certificates Wallet" />
-                           <DrawerLink to="/revision-hub" icon={RefreshCw} label="Revision Hub" />
-                           <DrawerLink to="/resume-analyzer" icon={FileText} label="Resume Analyzer" />
-                           <DrawerLink to="/community" icon={Users} label="Community" />
-                           <DrawerLink to="/referrals" icon={Gift} label="Referrals" />
-                        </div>
-                     </div>
-
-                  </div>
-               </motion.div>
+              <Link to="/login" className="text-sm font-medium text-white/60 hover:text-white transition-colors px-4 py-2">
+                Login
+              </Link>
+              <Link to="/login" className="btn-primary !py-2 !px-5 !text-sm">
+                Get Started
+              </Link>
             </>
-         )}
+          ) : (
+            <div className="flex items-center gap-2">
+              <button className="p-2 text-white/50 hover:text-white transition-colors relative">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-yellow-400 rounded-full border-2 border-black" />
+              </button>
+              
+              <div className="h-6 w-px bg-white/10 mx-2" />
+              
+              <div className="flex items-center gap-3 pl-2 group cursor-pointer" onClick={() => setIsDrawerOpen(true)}>
+                <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 group-hover:border-yellow-400/50 transition-all overflow-hidden">
+                  <User className="w-5 h-5" />
+                </div>
+                <div className="hidden lg:block text-left">
+                  <p className="text-xs font-bold text-white leading-none mb-0.5">User</p>
+                  <p className="text-[10px] text-white/40 leading-none">Pro Plan</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <button 
+            onClick={() => setIsDrawerOpen(true)}
+            className="md:hidden p-2 text-white/60 hover:text-white"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+
+      {/* Profile/Mobile Drawer */}
+      <AnimatePresence>
+        {isDrawerOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsDrawerOpen(false)}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+            />
+            <motion.div 
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 bottom-0 w-[300px] bg-[#0a0a0a] border-l border-white/10 z-50 p-6 flex flex-col shadow-2xl"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <span className="font-bold text-lg text-white">Menu</span>
+                <button onClick={() => setIsDrawerOpen(false)} className="p-2 text-white/50 hover:text-white">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {token && (
+                <div className="mb-8 p-4 rounded-2xl bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-black font-bold">U</div>
+                    <div>
+                      <p className="text-sm font-bold text-white">User Account</p>
+                      <p className="text-xs text-white/50">user@example.com</p>
+                    </div>
+                  </div>
+                  <Link to="/dashboard" onClick={() => setIsDrawerOpen(false)} className="flex items-center gap-2 text-xs font-bold text-yellow-400 hover:underline">
+                    View Profile <ChevronRight className="w-3 h-3" />
+                  </Link>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2 flex-1">
+                {currentLinks.map((link) => (
+                  <Link 
+                    key={link.label}
+                    to={link.href}
+                    onClick={() => setIsDrawerOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+                  >
+                    {link.icon && <link.icon className="w-4 h-4" />}
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+
+              <div className="pt-6 border-t border-white/5 mt-auto">
+                {token ? (
+                  <button 
+                    onClick={() => {
+                      handleLogout();
+                      setIsDrawerOpen(false);
+                    }} 
+                    className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-400/10 rounded-xl transition-all"
+                  >
+                    <LogOut className="w-4 h-4" /> Sign Out
+                  </button>
+                ) : (
+                  <Link to="/login" onClick={() => setIsDrawerOpen(false)} className="btn-primary w-full">Sign In</Link>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
       </AnimatePresence>
-    </>
+    </nav>
   );
 }
 
 export default Navbar;
+
+
