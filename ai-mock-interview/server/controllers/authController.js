@@ -97,3 +97,32 @@ export async function login(req, res) {
   }
 }
 
+export async function getMe(req, res) {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        totalInterviews: user.totalInterviews,
+        averageScore: user.averageScore,
+        bestScore: user.bestScore,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: "Server error fetching user profile.",
+    });
+  }
+}
+

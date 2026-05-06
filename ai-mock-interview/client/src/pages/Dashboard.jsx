@@ -100,13 +100,44 @@ export default function Dashboard() {
   const [showPricing, setShowPricing] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
+  
+  const [user, setUser] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [performance, setPerformance] = useState(null);
+  const [isFetching, setIsFetching] = useState(true);
 
   const location = useLocation();
 
   useEffect(() => {
-    const t = setTimeout(() => setInitialLoad(false), 800);
-    return () => clearTimeout(t);
+    fetchDashboardData();
   }, []);
+
+  const fetchDashboardData = async () => {
+    setIsFetching(true);
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const [userRes, historyRes, perfRes] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_API_URL}/api/auth/me`, config),
+        axios.get(`${import.meta.env.VITE_API_URL}/api/interview/history`, config),
+        axios.get(`${import.meta.env.VITE_API_URL}/api/interview/performance`, config)
+      ]);
+
+      setUser(userRes.data.user);
+      setHistory(historyRes.data.history || []);
+      setPerformance(perfRes.data);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setIsFetching(false);
+      setInitialLoad(false);
+    }
+  };
 
   useEffect(() => {
     if (!initialLoad && location.hash === "#tools") {
@@ -155,7 +186,7 @@ export default function Dashboard() {
     }
   };
 
-  if (initialLoad) {
+  if (initialLoad || isFetching) {
     return (
       <div className="max-w-7xl mx-auto px-6 py-12 space-y-8 animate-pulse">
         <div className="flex flex-col md:flex-row justify-between gap-6">
@@ -194,6 +225,11 @@ export default function Dashboard() {
     { title: "Refer & Earn", desc: "Invite friends to NextRound and unlock premium features.", icon: Gift, href: "/referrals", color: "text-lime-400" },
   ];
 
+  // Progressive Dashboard Stages
+  const interviewCount = user?.totalInterviews || 0;
+  const stage = interviewCount === 0 ? 1 : 
+                interviewCount <= 3 ? 2 : 
+                interviewCount <= 10 ? 3 : 4;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
@@ -226,18 +262,25 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* Header Section */}
+      {/* Header Section - Evolves with Stages */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Welcome back, Neeraj 👋</h1>
-          <p className="text-slate-400">Continue your interview preparation and track your progress.</p>
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+            {stage === 1 ? "Welcome" : stage === 2 ? "Good start" : stage === 3 ? "Great progress" : "Veteran Status"}, {user?.name || "Candidate"} 👋
+          </h1>
+          <p className="text-slate-400">
+            {stage === 1 && "Start your interview preparation journey with NextRound AI."}
+            {stage === 2 && "You're building momentum. Complete 3 more sessions to unlock trend analysis."}
+            {stage === 3 && "Your patterns are becoming clear. Review your growth trends below."}
+            {stage === 4 && "Your profile is now highly accurate. You're ready for top-tier technical rounds."}
+          </p>
         </div>
         <div className="flex gap-4">
           <button 
             onClick={() => setIsModalOpen(true)}
             className="btn-primary"
           >
-            <Zap className="w-4 h-4 fill-current" /> Start Mock Interview
+            <Zap className="w-4 h-4 fill-current" /> {stage === 1 ? "Start First Interview" : "Start Mock Interview"}
           </button>
           <button onClick={() => setShowPricing(true)} className="btn-secondary">
             Upgrade to Pro
@@ -245,13 +288,33 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* Quick Stats - Progressively Reveals Information */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
         {[
-          { label: "Interviews Done", val: "12", icon: Activity, trend: "+2 this week" },
-          { label: "Average Score", val: "78%", icon: Target, trend: "Top 15%" },
-          { label: "Strongest Topic", val: "React", icon: Zap, trend: "92% Accuracy" },
-          { label: "Study Streak", val: "5 Days", icon: Clock, trend: "Personal Best" },
+          { 
+            label: "Interviews Done", 
+            val: interviewCount, 
+            icon: Activity, 
+            trend: stage === 1 ? "Start your journey" : `${interviewCount} session${interviewCount > 1 ? 's' : ''} total` 
+          },
+          { 
+            label: "Average Score", 
+            val: stage === 1 ? "No data" : `${user?.averageScore || 0}%`, 
+            icon: Target, 
+            trend: stage <= 2 ? "More sessions needed" : `Best: ${user?.bestScore || 0}%` 
+          },
+          { 
+            label: "Strongest Topic", 
+            val: stage <= 2 ? "Analyzing..." : (performance?.role || "Analyzing..."), 
+            icon: Zap, 
+            trend: stage <= 2 ? "Unlocks at 4 sessions" : "Detected from history" 
+          },
+          { 
+            label: "Preparation Level", 
+            val: stage === 1 ? "Beginner" : stage === 2 ? "Early" : stage === 3 ? "Advanced" : "Elite", 
+            icon: TrendingUp, 
+            trend: `Stage ${stage} of 4` 
+          },
         ].map((stat, i) => (
           <div key={i} className="premium-card p-5 flex flex-col justify-between">
             <div className="flex justify-between items-start mb-4">
@@ -274,73 +337,131 @@ export default function Dashboard() {
         <div className="col-span-12 lg:col-span-8 space-y-8">
           <section>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Continue Practice</h2>
-              <Link to="/history" className="text-xs font-bold text-yellow-400 uppercase tracking-wider hover:underline">View All</Link>
+              <h2 className="text-xl font-bold text-white">
+                {stage === 1 ? "Getting Started" : "Recent Practice"}
+              </h2>
+              {stage > 1 && (
+                <Link to="/history" className="text-xs font-bold text-yellow-400 uppercase tracking-wider hover:underline">View All</Link>
+              )}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                { title: "Senior Frontend Developer", date: "2 hours ago", score: 84, type: "DSA + React" },
-                { title: "System Design Mock", date: "Yesterday", score: 72, type: "Architecture" },
-              ].map((item, i) => (
-                <div key={i} className="premium-card p-6 group cursor-pointer hover:bg-white/[0.03]">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="font-bold text-white group-hover:text-yellow-400 transition-colors">{item.title}</h3>
-                      <p className="text-xs text-slate-500">{item.type} • {item.date}</p>
+
+            {stage === 1 ? (
+              <div className="premium-card p-10 text-center flex flex-col items-center">
+                 <div className="w-16 h-16 rounded-full bg-yellow-400/10 flex items-center justify-center text-yellow-400 mb-6">
+                    <Sparkles className="w-8 h-8" />
+                 </div>
+                 <h3 className="text-xl font-bold text-white mb-2">Ready for your first session?</h3>
+                 <p className="text-slate-400 max-w-sm mb-8">NextRound AI needs to observe your first interview to begin generating personalized performance metrics.</p>
+                 <button onClick={() => setIsModalOpen(true)} className="btn-primary px-10">Start Your First Interview</button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {history.slice(0, 2).map((item, i) => (
+                  <div key={i} className="premium-card p-6 group cursor-pointer hover:bg-white/[0.03]">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="font-bold text-white group-hover:text-yellow-400 transition-colors">{item.role}</h3>
+                        <p className="text-xs text-slate-500">{item.experience} • {new Date(item.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <div className="text-xl font-bold text-white">{item.totalScore}</div>
                     </div>
-                    <div className="text-xl font-bold text-white">{item.score}</div>
+                    <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${item.totalScore}%` }}
+                        className="bg-yellow-400 h-full"
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${item.score}%` }}
-                      className="bg-yellow-400 h-full"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </section>
 
           <section>
             <h2 className="text-xl font-bold text-white mb-6">Performance Insights</h2>
             <div className="premium-card p-8">
-               <div className="flex flex-col md:flex-row items-center gap-12">
-                  <div className="relative w-40 h-40">
-                    <svg className="w-full h-full" viewBox="0 0 100 100">
-                      <circle className="text-white/5" strokeWidth="10" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50" />
-                      <circle className="text-yellow-400" strokeWidth="10" strokeDasharray="251.2" strokeDashoffset="50" strokeLinecap="round" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50" />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-4xl font-bold text-white">80</span>
-                      <span className="text-[10px] text-slate-500 font-bold uppercase">Mastery</span>
+               {stage === 1 ? (
+                 <div className="flex flex-col items-center justify-center py-10 opacity-50">
+                    <BarChart3 className="w-12 h-12 text-slate-600 mb-4" />
+                    <p className="text-slate-400 font-medium">Insights unlock after your first interview</p>
+                 </div>
+               ) : stage === 2 ? (
+                 <div className="flex flex-col items-center justify-center py-12 space-y-6">
+                    <div className="relative w-24 h-24">
+                       <div className="absolute inset-0 rounded-full border-4 border-yellow-400/20 animate-ping" />
+                       <div className="absolute inset-0 rounded-full border-4 border-yellow-400 flex items-center justify-center">
+                          <Search className="w-8 h-8 text-yellow-400" />
+                       </div>
                     </div>
-                  </div>
-                  <div className="flex-1 grid grid-cols-2 gap-8 w-full">
-                    {[
-                      { label: "Communication", val: "85%", icon: MessageSquare },
-                      { label: "Technical Logic", val: "78%", icon: Code2 },
-                      { label: "Problem Solving", val: "92%", icon: BrainCircuit },
-                      { label: "System Design", val: "65%", icon: Layout },
-                    ].map((m, i) => (
-                      <div key={i} className="space-y-2">
-                        <div className="flex items-center justify-between text-xs font-bold uppercase tracking-tight">
-                          <span className="text-slate-500 flex items-center gap-2">
-                            <m.icon className="w-3 h-3" /> {m.label}
-                          </span>
-                          <span className="text-white">{m.val}</span>
-                        </div>
-                        <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
-                          <div className="bg-white/20 h-full w-full" style={{ width: m.val }} />
+                    <div className="text-center space-y-2">
+                       <h3 className="text-lg font-bold text-white">Detecting Your Patterns...</h3>
+                       <p className="text-sm text-slate-400 max-w-xs mx-auto leading-relaxed">
+                          We're analyzing your first sessions. Complete {4 - interviewCount} more interview{4 - interviewCount > 1 ? 's' : ''} to unlock topic-wise mastery charts.
+                       </p>
+                    </div>
+                 </div>
+               ) : (
+                 <div className="space-y-10">
+                   <div className="flex flex-col md:flex-row items-center gap-12">
+                      <div className="relative w-40 h-40 shrink-0">
+                        <svg className="w-full h-full" viewBox="0 0 100 100">
+                          <circle className="text-white/5" strokeWidth="10" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50" />
+                          <circle className="text-yellow-400" strokeWidth="10" strokeDasharray="251.2" strokeDashoffset={251.2 - (251.2 * (user?.averageScore || 0) / 100)} strokeLinecap="round" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50" />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-4xl font-bold text-white">{user?.averageScore || 0}</span>
+                          <span className="text-[10px] text-slate-500 font-bold uppercase">Mastery</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-               </div>
-               <div className="mt-8 pt-8 border-t border-white/5 flex items-center gap-4 text-sm text-slate-400">
-                  <ShieldCheck className="w-5 h-5 text-yellow-400" />
-                  <span>AI Insight: Your DSA problem-solving speed improved by 18% this week.</span>
-               </div>
+                      <div className="flex-1 grid grid-cols-2 gap-8 w-full">
+                        {[
+                          { label: "Communication", val: "85%", icon: MessageSquare },
+                          { label: "Technical Logic", val: "78%", icon: Code2 },
+                          { label: "Problem Solving", val: "92%", icon: BrainCircuit },
+                          { label: "System Design", val: "65%", icon: Layout },
+                        ].map((m, i) => (
+                          <div key={i} className="space-y-2">
+                            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-tight">
+                              <span className="text-slate-500 flex items-center gap-2">
+                                <m.icon className="w-3 h-3" /> {m.label}
+                              </span>
+                              <span className="text-white">{m.val}</span>
+                            </div>
+                            <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
+                              <div className="bg-white/20 h-full w-full" style={{ width: m.val }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                   </div>
+                   
+                   {stage === 4 && (
+                     <div className="grid grid-cols-3 gap-4 pt-8 border-t border-white/5">
+                        <div className="text-center p-4 bg-white/5 rounded-2xl">
+                           <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Consistency</p>
+                           <p className="text-xl font-bold text-white">92%</p>
+                        </div>
+                        <div className="text-center p-4 bg-white/5 rounded-2xl">
+                           <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Confidence</p>
+                           <p className="text-xl font-bold text-white">High</p>
+                        </div>
+                        <div className="text-center p-4 bg-white/5 rounded-2xl">
+                           <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Readiness</p>
+                           <p className="text-xl font-bold text-yellow-400">FAANG</p>
+                        </div>
+                     </div>
+                   )}
+
+                   <div className="pt-8 border-t border-white/5 flex items-center gap-4 text-sm text-slate-400">
+                      <ShieldCheck className="w-5 h-5 text-yellow-400" />
+                      <span>
+                        {stage === 3 && "AI Insight: Your DSA problem-solving speed improved by 18% this week."}
+                        {stage === 4 && "AI Insight: You've mastered 92% of common system design patterns. Ready for Senior roles."}
+                      </span>
+                   </div>
+                 </div>
+               )}
             </div>
           </section>
         </div>
@@ -348,26 +469,68 @@ export default function Dashboard() {
         {/* Right: Recommendations */}
         <div className="col-span-12 lg:col-span-4 space-y-8">
           <section>
-            <h2 className="text-xl font-bold text-white mb-6">Upcoming Recommendations</h2>
+            <h2 className="text-xl font-bold text-white mb-6">
+              {stage === 1 ? "Onboarding" : stage === 2 ? "Early Roadmap" : "Personalized Paths"}
+            </h2>
             <div className="space-y-4">
-              {[
-                { title: "Master Graph Traversal", tag: "Weakness", desc: "Based on your last BFS solution.", icon: TrendingUp },
-                { title: "Review Scalability Patterns", tag: "Next Step", desc: "Level up from Load Balancers.", icon: Sparkles },
-                { title: "Behavioral Prep", tag: "Recommended", desc: "Focus on Conflict Resolution.", icon: Users },
-              ].map((rec, i) => (
-                <div key={rec.title} className="premium-card p-5 group hover:border-yellow-400/30 transition-all">
-                  <div className="flex gap-4">
-                    <div className="p-3 rounded-xl bg-white/5 text-slate-400 group-hover:text-yellow-400 transition-colors">
-                      <rec.icon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest">{rec.tag}</span>
-                      <h3 className="font-bold text-white mb-1">{rec.title}</h3>
-                      <p className="text-xs text-slate-500">{rec.desc}</p>
+              {stage === 1 ? (
+                [
+                  { title: "Complete Profile", tag: "Required", desc: "Sync your experience context.", icon: User },
+                  { title: "Try Resume Analyzer", tag: "Highly Recommended", desc: "Get feedback on your CV.", icon: FileText },
+                  { title: "First Mock Interview", tag: "Action Needed", desc: "Start with a Junior Frontend role.", icon: Zap },
+                ].map((rec, i) => (
+                  <div key={i} className="premium-card p-5 group hover:border-yellow-400/30 transition-all">
+                    <div className="flex gap-4">
+                      <div className="p-3 rounded-xl bg-white/5 text-slate-400 group-hover:text-yellow-400 transition-colors">
+                        <rec.icon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest">{rec.tag}</span>
+                        <h3 className="font-bold text-white mb-1">{rec.title}</h3>
+                        <p className="text-xs text-slate-500">{rec.desc}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : stage === 2 ? (
+                [
+                  { title: "Review First Results", tag: "Recommended", desc: "Deep-dive into your first feedback.", icon: MessageSquare },
+                  { title: "System Design Intro", tag: "New for You", desc: "Explore basic scalability mocks.", icon: Layout },
+                  { title: "Unlock Progress View", tag: "Locked", desc: "Complete 2 more sessions.", icon: Clock },
+                ].map((rec, i) => (
+                  <div key={i} className="premium-card p-5 group hover:border-yellow-400/30 transition-all">
+                    <div className="flex gap-4">
+                      <div className="p-3 rounded-xl bg-white/5 text-slate-400 group-hover:text-yellow-400 transition-colors">
+                        <rec.icon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest">{rec.tag}</span>
+                        <h3 className="font-bold text-white mb-1">{rec.title}</h3>
+                        <p className="text-xs text-slate-500">{rec.desc}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                [
+                  { title: `Master ${performance?.role?.split(' ')[1] || 'Graphs'}`, tag: "Weakness", desc: "Based on recent session metrics.", icon: TrendingUp },
+                  { title: "Review Advanced Patterns", tag: "Next Step", desc: "Moving from basics to FAANG-tier.", icon: Sparkles },
+                  { title: "Behavioral Polish", tag: "Polishing", desc: "Focus on Leadership Principles.", icon: Users },
+                ].map((rec, i) => (
+                  <div key={i} className="premium-card p-5 group hover:border-yellow-400/30 transition-all">
+                    <div className="flex gap-4">
+                      <div className="p-3 rounded-xl bg-white/5 text-slate-400 group-hover:text-yellow-400 transition-colors">
+                        <rec.icon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest">{rec.tag}</span>
+                        <h3 className="font-bold text-white mb-1">{rec.title}</h3>
+                        <p className="text-xs text-slate-500">{rec.desc}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </section>
           

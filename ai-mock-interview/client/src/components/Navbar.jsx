@@ -6,6 +6,7 @@ import {
   Layers, BarChart3, History as HistoryIcon, CreditCard
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import axios from "axios";
 
 function Navbar() {
   const navigate = useNavigate();
@@ -13,15 +14,37 @@ function Navbar() {
   const token = localStorage.getItem("token");
   const [isScrolled, setIsScrolled] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem("user");
+    return saved ? JSON.parse(saved) : null;
+  });
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
+    
+    if (token) {
+      fetchUser();
+    }
+
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [token]);
+
+  const fetchUser = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUser(response.data.user);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+    } catch (err) {
+      console.error("Error fetching user in navbar:", err);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     navigate("/");
   };
 
@@ -102,10 +125,14 @@ function Navbar() {
               
               <div className="flex items-center gap-3 pl-2 group cursor-pointer" onClick={() => setIsDrawerOpen(true)}>
                 <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 group-hover:border-yellow-400/50 transition-all overflow-hidden">
-                  <User className="w-5 h-5" />
+                  {user?.name ? (
+                    <span className="text-xs font-bold text-yellow-400">{user.name.charAt(0).toUpperCase()}</span>
+                  ) : (
+                    <User className="w-5 h-5" />
+                  )}
                 </div>
                 <div className="hidden lg:block text-left">
-                  <p className="text-xs font-bold text-white leading-none mb-0.5">User</p>
+                  <p className="text-xs font-bold text-white leading-none mb-0.5">{user?.name || "Candidate"}</p>
                   <p className="text-[10px] text-white/40 leading-none">Pro Plan</p>
                 </div>
               </div>
@@ -149,10 +176,12 @@ function Navbar() {
               {token && (
                 <div className="mb-8 p-4 rounded-2xl bg-white/5 border border-white/10">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-black font-bold">U</div>
+                    <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-black font-bold">
+                      {user?.name?.charAt(0).toUpperCase() || "U"}
+                    </div>
                     <div>
-                      <p className="text-sm font-bold text-white">User Account</p>
-                      <p className="text-xs text-white/50">user@example.com</p>
+                      <p className="text-sm font-bold text-white">{user?.name || "Candidate"}</p>
+                      <p className="text-xs text-white/50">{user?.email || "user@example.com"}</p>
                     </div>
                   </div>
                   <Link to="/dashboard" onClick={() => setIsDrawerOpen(false)} className="flex items-center gap-2 text-xs font-bold text-yellow-400 hover:underline">
