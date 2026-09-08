@@ -26,9 +26,7 @@ NextRound AI is a powerful MERN-stack platform designed to simulate FAANG-level 
 **Frontend Framework**
 * **React.js** (Vite)
 * **Tailwind CSS** (Global Styling & Utility classes)
-* **Framer Motion** (Physics-based component animations & routing transitions)
-* **Recharts** (SVG data graphing)
-* **Lucide React** (Vector iconography)
+
 
 **Backend Architecture**
 * **Node.js & Express.js** (API Routing)
